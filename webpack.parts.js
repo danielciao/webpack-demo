@@ -1,6 +1,24 @@
+const webpack = require('webpack');
+const cssnano = require('cssnano');
+
 const PostCssPresetEnv = require('postcss-preset-env');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const PurifyCssPlugin = require('purifycss-webpack');
+const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
+const CleanWebpackPlugin = require('clean-webpack-plugin');
+const GitRevisionPlugin = require('git-revision-webpack-plugin');
+const UglifyWebpackPlugin = require('uglifyjs-webpack-plugin');
+
+exports.entry = () => ({
+  entry: ['@babel/polyfill', './src/index.js']
+});
+
+exports.output = () => ({
+  output: {
+    chunkFilename: '[name].[chunkhash:4].js',
+    filename: '[name].[chunkhash:4].js'
+  }
+});
 
 exports.devServer = ({ host, port } = {}) => ({
   devServer: {
@@ -64,14 +82,29 @@ exports.extractCSS = ({ include, exclude, use = [] }) => {
     },
     plugins: [
       new MiniCssExtractPlugin({
-        filename: '[name].css'
+        filename: '[name].[contenthash:4].css'
       })
     ]
   };
 };
 
 exports.purifyCSS = ({ paths }) => ({
-  plugins: [new PurifyCssPlugin({ paths, minimize: true })]
+  plugins: [
+    new PurifyCssPlugin({
+      paths,
+      minimize: true
+    })
+  ]
+});
+
+exports.minifyCSS = ({ options }) => ({
+  plugins: [
+    new OptimizeCSSAssetsPlugin({
+      cssProcessor: cssnano,
+      cssProcessorOptions: options,
+      canPrint: false
+    })
+  ]
 });
 
 exports.autoprefix = () => ({
@@ -79,4 +112,70 @@ exports.autoprefix = () => ({
   options: {
     plugins: () => [require('autoprefixer')()]
   }
+});
+
+exports.minifyJavaScript = () => ({
+  optimization: {
+    // minimize: false,
+    minimizer: [
+      new UglifyWebpackPlugin({
+        sourceMap: true
+      })
+    ]
+  }
+});
+
+exports.loadJavaScript = ({ include, exclude } = {}) => ({
+  module: {
+    rules: [
+      {
+        test: /\.js$/,
+        include,
+        exclude,
+        use: 'babel-loader'
+      }
+    ]
+  }
+});
+
+exports.generateSourceMaps = ({ type }) => ({
+  devtool: type
+});
+
+exports.extractBundles = () => ({
+  optimization: {
+    splitChunks: {
+      cacheGroups: {
+        commons: {
+          test: /[\\/]node_modules[\\/]/,
+          name: 'vendor',
+          chunks: 'initial'
+        }
+      }
+    },
+
+    runtimeChunk: {
+      name: 'manifest'
+    }
+  }
+});
+
+exports.attachRevision = () => ({
+  plugins: [
+    new webpack.BannerPlugin({
+      banner: new GitRevisionPlugin().version()
+    })
+  ]
+});
+
+exports.setWebpackVariable = (key, value) => ({
+  plugins: [
+    new webpack.DefinePlugin({
+      [key]: JSON.stringify(value)
+    })
+  ]
+});
+
+exports.clean = path => ({
+  plugins: [new CleanWebpackPlugin([path])]
 });

@@ -11,11 +11,21 @@ const NyanProgressPlugin = require('nyan-progress-webpack-plugin');
 const parts = require('./webpack.parts');
 
 const PATHS = {
-  app: path.join(__dirname, 'src')
+  app: path.join(__dirname, 'src'),
+  build: path.join(__dirname, 'dist'),
+  records: path.join(__dirname, 'records.json')
 };
 
 const commonConfig = merge([
+  parts.entry(),
+  parts.output(),
+  parts.clean(PATHS.build),
+  parts.loadJavaScript({
+    include: PATHS.app
+  }),
+  parts.setWebpackVariable('HELLO', 'Hello from config 😘'),
   {
+    recordsPath: PATHS.records,
     plugins: [
       new HtmlWebpackPlugin({
         title: 'Webpack demo'
@@ -27,12 +37,32 @@ const commonConfig = merge([
 ]);
 
 const productionConfig = merge([
+  parts.minifyJavaScript(),
+  parts.minifyCSS({
+    options: {
+      discardComments: {
+        removeAll: true
+      }
+    }
+  }),
   parts.extractCSS({
     use: ['css-loader', parts.autoprefix()]
   }),
   parts.purifyCSS({
     paths: glob.sync(`${PATHS.app}/**/*.js`, { nodir: true })
-  })
+  }),
+  parts.generateSourceMaps({
+    type: 'source-map'
+  }),
+  parts.extractBundles(),
+  parts.attachRevision(),
+  {
+    performance: {
+      hints: 'warning', // "error" or false are valid too
+      maxEntrypointSize: 50000, // in bytes, default 250k
+      maxAssetSize: 450000 // in bytes
+    }
+  }
 ]);
 
 const developmentConfig = merge([
@@ -47,6 +77,9 @@ const developmentConfig = merge([
 ]);
 
 module.exports = mode => {
+  // pass webpack env to babel
+  process.env.BABEL_ENV = mode;
+
   if (mode === 'production') {
     return merge(commonConfig, productionConfig, { mode });
   }

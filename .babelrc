@@ -1,0 +1,22 @@
+{
+  "plugins": ["syntax-dynamic-import"],
+
+  "presets": [
+    [
+      "@babel/preset-env",
+      {
+        "modules": false,
+        "useBuiltIns": "entry"
+      }
+    ]
+  ],
+
+  "env": {
+    "development": {
+      "plugins": ["annotate-console-log"]
+    },
+    "production": {
+      "plugins": ["transform-react-remove-prop-types"]
+    }
+  }
+}
